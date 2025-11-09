@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}My Applications{% endblock %}
+
+{% block content %}
+
+<div class="text-center mb-5">
+<h1 class="display-5 fw-bold text-gray-800">My Job Applications</h1>
+<p class="lead text-gray-600">A summary of the roles you've applied for.</p>
+</div>
+
+{% if applications %}
+
+<div class="row row-cols-1 g-4">
+{% for app in applications %}
+<div class="col">
+<div class="card p-3 shadow-sm border-2 border-success border-opacity-50">
+<div class="card-body">
+<h4 class="card-title text-success-700">{{ app.title }}</h4>
+<h6 class="card-subtitle mb-2 text-muted">{{ app.company }}</h6>
+<p class="card-text text-sm">{{ app.description[:200] }}...</p>
+<span class="badge bg-success">Application Submitted</span>
+</div>
+</div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="alert alert-warning">You have not submitted any applications yet. <a href="{{ url_for('main.home') }}" class="alert-link">View open jobs.</a></div>
+{% endif %}
+
+{% endblock %}

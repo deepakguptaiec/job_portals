@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Job Listings{% endblock %}
+
+{% block content %}
+
+<div id="app" class="min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div class="profile-container w-full max-w-lg bg-white shadow-xl rounded-2xl p-6 sm:p-8">
+
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <h1 class="text-3xl font-bold text-gray-800">User Profile</h1>
+                <span class="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    <span class="font-semibold">Role:</span> <span id="userIdDisplay">{{ user_data.role | capitalize  }}</span>
+                </span>
+            </div>
+
+            <!-- VIEW MODE (DEFAULT) -->
+            <div id="view-mode">
+                <div class="space-y-4">
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-indigo-600">Name</p>
+                        <p id="view-name" class="text-xl font-semibold text-gray-800"></p>
+                    </div>
+
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-indigo-600">Email</p>
+                        <p id="view-email" class="text-xl font-semibold text-gray-800"></p>
+                    </div>
+
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <p class="text-sm font-medium text-indigo-600">Bio</p>
+                        <p id="view-bio" class="text-gray-700 whitespace-pre-line"></p>
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <button id="edit-button" onclick="toggleEdit(true)" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 ease-in-out transform hover:scale-[1.01]">
+                        Edit Profile
+                    </button>
+                </div>
+            </div>
+
+            <!-- EDIT MODE (HIDDEN BY DEFAULT) -->
+            <div id="edit-mode" class="hidden">
+                <form id="profile-form"  onsubmit="event.preventDefault(); saveProfile()">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="edit-name" class="block text-sm font-medium text-gray-700">Name</label>
+                            <input type="text" id="edit-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="edit-email" class="block text-sm font-medium text-gray-700">Email</label>
+                            <input type="email" id="edit-email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        </div>
+                        <div>
+                            <label for="edit-bio" class="block text-sm font-medium text-gray-700">Bio</label>
+                            <textarea id="edit-bio" rows="4" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex space-x-3">
+                        <button type="submit" class="flex-1 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-150 ease-in-out transform hover:scale-[1.01]">
+                            Save Changes
+                        </button>
+                        <button type="button" onclick="toggleEdit(false)" class="flex-1 px-6 py-3 bg-gray-300 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-400 transition duration-150 ease-in-out transform hover:scale-[1.01]">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Message Box for Feedback (Instead of alert()) -->
+            <div id="message-box" class="fixed top-4 right-4 p-4 rounded-lg shadow-lg text-white font-semibold hidden transition duration-300 transform"></div>
+        </div>
+    </div>
+
+    <!-- Firebase Imports and Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- MANDATORY GLOBAL VARIABLE HANDLING ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        let userId = 'loading...';
+        let db, auth;
+
+        // Function to handle the mandatory Firebase setup
+        const setupFirebase = async () => {
+            if (!firebaseConfig) {
+                console.warn("Firebase config is missing. Proceeding with local profile data only.");
+                return;
+            }
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // Enable logging for debugging
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                userId = auth.currentUser?.uid || crypto.randomUUID();
+                document.getElementById('userIdDisplay').textContent = userId;
+                console.log("Firebase initialized and user authenticated:", userId);
+
+            } catch (error) {
+                console.error("Firebase Auth/Init Error:", error);
+            }
+        };
+        
+        window.setupFirebase = setupFirebase;
+        window.initializeApp = initializeApp; // Make available globally if needed
+    </script>
+
+
+    <!-- Profile Logic Script -->
+    <script>
+        // Initial state for the profile
+        let profileData = {
+            name: "{{ user_data.username | e }}",
+            email: "{{ user_data.email | e }}",
+            bio: "{{ user_data.bio | e }}"
+        };
+
+        const viewMode = document.getElementById('view-mode');
+        const editMode = document.getElementById('edit-mode');
+        const viewName = document.getElementById('view-name');
+        const viewEmail = document.getElementById('view-email');
+        const viewBio = document.getElementById('view-bio');
+        const editName = document.getElementById('edit-name');
+        const editEmail = document.getElementById('edit-email');
+        const editBio = document.getElementById('edit-bio');
+        const messageBox = document.getElementById('message-box');
+
+        // Function to update the view elements from the profileData state
+        const updateView = () => {
+            viewName.textContent = profileData.name;
+            viewEmail.textContent = profileData.email;
+            viewBio.textContent = profileData.bio;
+
+            // 🔥 Send updated data to Flask backend
+            fetch("/update_profile", {
+                method: "POST",
+                headers: {
+                "Content-Type": "application/json",
+                },
+                body: JSON.stringify(profileData),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Server response:", data);
+                if (data.success) {
+                //showMessage(data.message, "success");
+                } else {
+                showMessage(data.message || "Update failed.", "error");
+                }
+            })
+            .catch(error => {
+                console.error("Error updating profile:", error);
+                showMessage("Server error while saving profile.", "error");
+            });
+        };
+
+        // Function to show a message (replaces alert())
+        const showMessage = (text, type = 'success') => {
+            let bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            messageBox.className = `fixed top-12 right-4 p-4 rounded-lg shadow-lg text-white font-semibold transition duration-300 transform ${bgColor}`;
+            messageBox.textContent = text;
+            messageBox.style.display = 'block';
+
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        };
+
+        // Main function to toggle between view and edit modes
+        window.toggleEdit = (isEditing) => {
+            if (isEditing) {
+                // Populate the form fields with current data before showing
+                editName.value = profileData.name;
+                editEmail.value = profileData.email;
+                editBio.value = profileData.bio;
+
+                // Show edit mode, hide view mode
+                viewMode.classList.add('hidden');
+                editMode.classList.remove('hidden');
+            } else {
+                // Hide edit mode, show view mode (Cancel action)
+                editMode.classList.add('hidden');
+                viewMode.classList.remove('hidden');
+                showMessage("Profile editing cancelled.", "info");
+            }
+        };
+
+        // Function to handle saving the profile data
+        window.saveProfile = () => {
+            // 1. Capture data from form inputs
+            const newName = editName.value.trim();
+            const newEmail = editEmail.value.trim();
+            const newBio = editBio.value.trim();
+
+            if (!newName || !newEmail) {
+                showMessage("Name and Email are required.", "error");
+                return;
+            }
+
+            // 2. Update the internal state
+            profileData = {
+                name: newName,
+                email: newEmail,
+                bio: newBio
+            };
+
+            // 3. Update the view display
+            updateView();
+
+            // 4. Switch back to view mode
+            toggleEdit(false);
+
+            // 5. Provide feedback (and simulate database update)
+            showMessage("Profile updated successfully!", "success");
+
+            // NOTE: This is where you would call a Firestore update function:
+            // updateFirestoreProfile(profileData, userId);
+        };
+
+        // Initialize the app on window load
+        window.onload = () => {
+            // First, update the view with initial data
+            updateView();
+            // Then, set up Firebase boilerplate
+            if (typeof window.setupFirebase === 'function') {
+                window.setupFirebase();
+            }
+        };
+    </script>
+
+
+{% endblock %}

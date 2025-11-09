@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Job Detail: {{ job.title }}{% endblock %}
+
+{% block content %}
+
+<div class="mb-5">
+<h1 class="display-6 fw-bold text-indigo-700">{{ job.title }}</h1>
+<h2 class="text-xl text-gray-600 mb-4">{{ job.company }}</h2>
+<p class="text-md text-gray-700">{{ job.description }}</p>
+<a href="{{ url_for('main.home') }}" class="btn btn-secondary btn-sm mt-3">← Back to Listings</a>
+</div>
+
+<hr class="my-4">
+
+<h3 class="fw-bold mb-4">Applicants ({{ applicants|length }})</h3>
+
+{% if applicants %}
+
+<div class="list-group">
+{% for applicant in applicants %}
+<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+<div>
+<h5 class="mb-1">{{ applicant.username }}</h5>
+<small class="text-muted">Applicant ID: {{ applicant.applicant_id }}</small>
+</div>
+<span class="badge bg-primary rounded-pill">Applied</span>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div class="alert alert-warning">No jobseekers have applied for this role yet.</div>
+{% endif %}
+
+{% endblock %}

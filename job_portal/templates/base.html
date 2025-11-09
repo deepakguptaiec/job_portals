@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{% endblock %} | JobPortal </title>
+
+<!-- *** FIXED CDN LINKS *** -->
+<!-- Bootstrap CSS CDN -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Lucide Icons for Navigation -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* --- Global Styles & User Customizations --- */
+body { background-color: #f7f9fc; font-family: 'Inter', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+.navbar { background-color: #4f46e5; }
+.card { border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+.btn-primary { background-color: #4f46e5; border-color: #4f46e5; transition: all 0.2s; }
+.btn-primary:hover { background-color: #3730a3; border-color: #3730a3; }
+.form-control { border-radius: 8px; }
+.job-card:hover { transform: translateY(-3px); box-shadow: 0 8px 10px rgba(0, 0, 0, 0.15); }
+.job-card { transition: all 0.3s; }
+
+/* --- Sidebar Specific Styles (Tailwind/CSS Hybrid) --- */
+#sidebar {
+    transition: width 0.3s ease-in-out;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+    z-index: 10;
+    /* Use sticky top-0 and fixed height for desktop */
+    position: sticky;
+    top: 0; 
+    height: 100vh;
+}
+
+.collapse {
+  visibility: visible !important;
+}
+
+@media (min-width: 1024px) {
+    /* Desktop: Collapsed to w-16 */
+    #sidebar { width: 4rem; } 
+    /* Desktop: Expanded to w-64 on hover */
+    #sidebar:hover { width: 16rem; }
+
+    /* Hide text initially, show on hover */
+    .sidebar-text { opacity: 0; transition: opacity 0.2s ease-in-out; }
+    #sidebar:hover .sidebar-text { opacity: 1; }
+}
+
+/* Mobile/Tablet: Horizontal Menu */
+@media (max-width: 1023px) {
+    /* Stack layout vertically */
+    .main-wrapper { flex-direction: column; }
+    /* Full width, not sticky/full height */
+    #sidebar { width: 100%; height: auto; position: relative; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+    /* Force menu items into a horizontal row */
+    #sidebar .nav-list { flex-direction: row; justify-content: space-around; }
+    /* Hide text completely */
+    .sidebar-text { display: none; }
+    /* Center icons on mobile */
+    .nav-link { justify-content: center; padding: 0.75rem 0.5rem !important; }
+}
+</style>
+</head>
+<body class="bg-gray-50">
+
+<!-- 1. Top Navbar (Header) - Sticky so content scrolls underneath -->
+<nav class="navbar navbar-expand-lg navbar-dark shadow-lg sticky-top z-20" style="background-color: #4f46e5;">
+    <div class="container-fluid">
+        <a class="navbar-brand text-indigo-100 font-bold" href="{{ url_for('main.home') }}">JobPortal</a>
+        
+        <!-- User Info & Logout on Top Bar (Always visible) -->
+        <div class="d-flex align-items-center me-3">
+            {% if logged_in %}
+                <span class="navbar-text text-yellow-300 me-3 hidden lg:block">
+                    Welcome, {{ username }} ({{ role.capitalize() }})
+                </span>
+                <li class="nav-item hidden lg:block">
+                    <a class="btn btn-outline-light btn-sm ms-3" href="{{ url_for('auth.logout') }}">Logout</a>
+                </li>
+                
+            {% elif not logged_in %}
+            <li class="nav-item hidden lg:block">
+                <a class="btn btn-outline-light btn-sm ms-3" href="{{ url_for('auth.login') }}">Login</a>
+            </li>
+            <!-- <li class="nav-item hidden lg:block">
+                <a class="btn btn-outline-light btn-sm ms-3" href="{{ url_for('auth.register') }}">Register</a>
+            </li> -->
+            {% endif %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+        </div>
+
+        <!-- Collapsible Links on Mobile/Tablet -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto align-items-center">
+                {%  if logged_in %}
+                    <!-- Separate Logout button for mobile view -->
+                    <li class="nav-item d-lg-none">
+                        <span class="nav-link text-yellow-300">
+                            {{ username }} ({{ role.capitalize() }})
+                        </span>
+                    </li>
+                    <li class="nav-item d-lg-none">
+                        <a class="btn btn-sm btn-outline-light ms-2" href="{{ url_for('auth.logout') }}">Logout</a>
+                    </li>
+                {% else %}
+                    {# Public Links #}
+                    <li class="nav-item d-lg-none">
+                        <a class="nav-link text-white hover:text-yellow-300" href="{{ url_for('auth.login') }}">Login</a>
+                    </li>
+                    <li class="nav-item d-lg-none">
+                        <a class="nav-link text-white hover:text-yellow-300" href="{{ url_for('auth.register') }}">Register</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- 2. Main Wrapper for Sidebar and Content -->
+<div class="main-wrapper flex flex-1 w-full">
+
+    <!-- 3. Collapsible Sidebar (Only renders when logged in) -->
+    {% if logged_in %}
+    <aside id="sidebar" class="bg-gray-800 text-white shadow-2xl pt-4">
+        <ul class="nav-list flex flex-col space-y-2 p-2">
+            
+            {# Home/Dashboard Link #}
+            <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="{{ url_for('main.home') }}">
+                    <i data-lucide="layout-dashboard" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Dashboard</span>
+                </a>
+            </li>
+
+            {# Admin Links #}
+            {% if role == 'admin' %}
+            <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="{{ url_for('admin.dashboard') }}">
+                    <i data-lucide="shield-half" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Admin Panel</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {# Recruiter Links #}
+            {% if role == 'recruiter' %}
+            <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="{{ url_for('recruiter.post_job') }}">
+                    <i data-lucide="briefcase" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Post New Job</span>
+                </a>
+            </li>
+            <!-- recruiter.manage_jobs -->
+            <!-- <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="">
+                    <i data-lucide="list-checks" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Manage Jobs</span>
+                </a>
+            </li> -->
+            {% endif %}
+
+            {# Applicant Links #}
+            {% if role == 'applicant' %}
+            <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="{{ url_for('main.my_applications') }}">
+                    <i data-lucide="file-text" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">My Applications</span>
+                </a>
+            </li>
+            {% endif %}
+
+            {# Settings/Profile Placeholder #}
+            <!-- main.profile -->
+            <li>
+                <a class="nav-link flex items-center text-gray-300 hover:bg-indigo-600 hover:text-white rounded-lg p-3 mx-2 transition-colors duration-200" href="{{ url_for('main.profile') }}">
+                    <i data-lucide="settings" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Profile</span>
+                </a>
+            </li>
+            
+            <!-- Desktop Logout (Hidden on mobile as it's in the top bar) -->
+            <li class="hidden lg:block">
+                <a class="nav-link flex items-center text-red-300 hover:bg-red-700 hover:text-white rounded-lg p-3 mx-2 mt-4 transition-colors duration-200" href="{{ url_for('auth.logout') }}">
+                    <i data-lucide="log-out" class="w-6 h-6 flex-shrink-0"></i>
+                    <span class="sidebar-text ml-4 font-medium">Logout</span>
+                </a>
+            </li>
+
+        </ul>
+    </aside>
+    {% endif %}
+    <!-- End Sidebar -->
+
+
+    <!-- 4. Main Content Area -->
+    <main class="flex-grow p-5 lg:p-8 w-full">
+        <!-- The block content now sits inside the responsive main area -->
+        <div class="container-fluid">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+    <!-- End Main Content -->
+
+</div>
+<!-- End Main Wrapper -->
+
+<!-- 5. Footer -->
+<footer class="text-center text-lg-start text-muted bg-white border-t mt-auto">
+  <div class="container p-4">
+    <div class="d-flex justify-content-center">
+      <p class="text-gray-500">
+        &copy; Copyright © 2025 Job Portal Demo.
+      </p>
+    </div>
+  </div>
+</footer>
+
+<!-- Bootstrap JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Initialize Lucide Icons -->
+<script>
+    // Ensure icons are rendered after DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    });
+</script>
+
+</body>
+</html>
