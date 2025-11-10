@@ -30,7 +30,7 @@ applications | id | job_id | applied_at |
 
 ⚡️ Quick Start
 # 1️⃣ Clone the repo
-git clone https://github.com/deepakguptaiec/job-portals.git
+git clone [https://github.com/deepakguptaiec/job-portals.git](https://github.com/deepakguptaiec/job_portals.git)
 cd job-portal
 
 # 2️⃣ Create a virtual environment
